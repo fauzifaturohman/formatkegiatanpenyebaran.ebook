@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generator Format Kegiatan Penyebaran E-Book</title>
+<style>
+:root{
+  --bg:#eef2f7;--line:#dbe3ec;--ink:#1e293b;--muted:#64748b;
+  --brand:#2563eb;--brand-dark:#1d4ed8;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  background:var(--bg);color:var(--ink);font-size:14px}
+
+/* ---------- TOPBAR ---------- */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;
+  justify-content:space-between;gap:16px;padding:12px 20px;background:#fff;
+  border-bottom:1px solid var(--line);box-shadow:0 1px 3px rgba(15,23,42,.06);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{font-size:26px;line-height:1}
+.brand h1{margin:0;font-size:16px}
+.brand p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 14px;
+  border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{background:#f1f5f9}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-dark)}
+.btn.ghost{background:transparent}
+
+/* ---------- LAYOUT ---------- */
+main{display:grid;grid-template-columns:430px 1fr;align-items:start}
+.sidebar{position:sticky;top:65px;max-height:calc(100vh - 65px);overflow-y:auto;
+  padding:16px;display:flex;flex-direction:column;gap:14px;
+  border-right:1px solid var(--line);background:#f8fafc}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h2{margin:0 0 12px;font-size:12px;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--muted);font-weight:700}
+
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:4px}
+.field input[type=text],.field input[type=url],.field textarea{
+  width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;
+  font:inherit;font-size:13px;background:#fff;color:var(--ink)}
+.field textarea{resize:vertical;min-height:58px}
+.field input:focus,.field textarea:focus{outline:2px solid #bfdbfe;border-color:var(--brand)}
+
+.switch{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#475569;
+  padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;cursor:pointer}
+.switch input{width:16px;height:16px;accent-color:var(--brand)}
+
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.chip{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:#e0edff;color:#1d4ed8}
+.chip.warn{background:#fef3c7;color:#b45309}
+
+/* ---------- GROUP ROWS ---------- */
+#groupList{display:flex;flex-direction:column}
+.grow{display:grid;grid-template-columns:20px 1fr auto auto 24px;gap:6px;
+  align-items:center;padding:6px 0;border-bottom:1px dashed #e2e8f0}
+.grow:last-child{border-bottom:none}
+.gnum{font-size:11px;color:var(--muted);text-align:right}
+.gname{padding:7px 8px;border:1px solid var(--line);border-radius:7px;
+  font-size:13px;width:100%;min-width:0;font-family:inherit}
+.gname:focus{outline:2px solid #bfdbfe;border-color:var(--brand)}
+.thumb{position:relative;width:40px;height:40px;border:1px dashed #cbd5e1;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);
+  cursor:pointer;overflow:visible;background:#f8fafc;text-align:center;line-height:1.1}
+.thumb img{width:100%;height:100%;object-fit:cover;border-radius:7px;display:block}
+.thumb.has{border-style:solid;border-color:#93c5fd}
+.thumb.drag{border-color:var(--brand);background:#eff6ff}
+.thumb .clear{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
+  background:#ef4444;color:#fff;font-size:12px;line-height:15px;text-align:center;
+  border:2px solid #fff;display:none;cursor:pointer;font-weight:700}
+.thumb.has:hover .clear{display:block}
+.del{border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:14px;
+  padding:4px;border-radius:6px;line-height:1}
+.del:hover{background:#fee2e2;color:#dc2626}
+.rowbtns{display:flex;gap:8px;margin-top:10px}
+.rowbtns .btn{flex:1;text-align:center;padding:8px}
+
+/* ---------- STAGE / PAGE ---------- */
+.stage{padding:24px;overflow-x:auto}
+.page{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:18mm 16mm;
+  box-shadow:0 8px 30px rgba(15,23,42,.12);border-radius:2px;
+  font-family:"Times New Roman",Georgia,serif;font-size:12pt;line-height:1.5;color:#000}
+.page a{color:#1155cc}
+
+/* ---------- PRINT ---------- */
+@page{size:A4;margin:15mm}
+@media print{
+  body{background:#fff}
+  .topbar,.sidebar{display:none !important}
+  main{display:block}
+  .stage{padding:0;overflow:visible}
+  .page{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;border-radius:0}
+}
+@media(max-width:1080px){
+  main{grid-template-columns:1fr}
+  .sidebar{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--line)}
+  .page{width:100%;padding:18px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📘</span>
+    <div>
+      <h1>Generator Format Kegiatan Penyebaran E-Book</h1>
+      <p>Susun laporan penyebaran e-book ke grup WhatsApp — otomatis &amp; rapi</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" id="btnSample">Contoh Data</button>
+    <button class="btn ghost" id="btnReset">Reset</button>
+    <button class="btn" id="btnPrint">🖨 Cetak / PDF</button>
+    <button class="btn primary" id="btnDoc">⬇ Unduh .doc</button>
+  </div>
+</header>
+
+<main>
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+
+    <section class="card">
+      <h2>1 · Informasi Dokumen</h2>
+      <div class="field">
+        <label>Judul Dokumen</label>
+        <input type="text" id="docTitle" placeholder="FORMAT KEGIATAN PENYEBARAN E-BOOK ...">
+      </div>
+      <div class="field">
+        <label>Link FlipHTML5</label>
+        <input type="url" id="flipLink" placeholder="https://online.fliphtml5.com/...">
+      </div>
+      <div class="field">
+        <label>Label Media Penyebaran</label>
+        <input type="text" id="mediaLabel" placeholder="WA dan Tele / WA dan Video">
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="videoEnabled">
+        Sertakan screenshot <b>Video</b> (kolom kedua)
+      </label>
+      <div class="field" style="margin-top:10px">
+        <label>Catatan Penutup</label>
+        <textarea id="note" placeholder="Agar tidak ada duplikasi ..."></textarea>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2 · Daftar Grup &amp; Screenshot</h2>
+      <div class="stats">
+        <span class="chip" id="chipTotal">0 grup</span>
+        <span class="chip" id="chipShot">0 screenshot</span>
+        <span class="chip warn" id="chipDup" style="display:none">⚠ Ada nama duplikat</span>
+      </div>
+
+      <div id="groupList"></div>
+
+      <div class="rowbtns">
+        <button class="btn" id="btnAdd">+ Tambah Grup</button>
+        <button class="btn ghost" id="btnClearAll">Kosongkan</button>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label>Impor cepat nama grup (pisahkan dengan koma / baris baru)</label>
+        <textarea id="bulkNames" placeholder="Grup A, Grup B, Grup C"></textarea>
+      </div>
+      <button class="btn" id="btnBulk" style="width:100%">Tambahkan dari daftar</button>
+    </section>
+
+    <section class="card">
+      <h2>💡 Cara Pakai</h2>
+      <ol style="margin:0;padding-left:18px;font-size:12.5px;color:#475569;line-height:1.7">
+        <li>Isi judul, link fliphtml, dan label media.</li>
+        <li>Tambahkan nama grup (bisa borongan lewat impor cepat).</li>
+        <li>Klik kotak <b>+ WA</b> / <b>+ Vid</b> untuk unggah screenshot
+            (bisa juga <i>drag &amp; drop</i> gambar ke kotak).</li>
+        <li>Klik <b>Unduh .doc</b> atau <b>Cetak / PDF</b>.</li>
+      </ol>
+    </section>
+
+  </aside>
+
+  <!-- ================= PREVIEW ================= -->
+  <section class="stage">
+    <div class="page" id="page"></div>
+  </section>
+</main>
+
+<script>
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const $  = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
+}
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const STORAGE_KEY = 'ebook-sebaran-draft-v1';
+
+const SAMPLE_NAMES = [
+  "EX PELATIHAN KWU","BARUDAK JADUL REMAKO","PPKN 7D","BINCANG BISNIS TASIKMALAYA",
+  "WIRAUSAHA MUDA JABAR","WIRAUSAHAWAN MUDA","BELAJAR MENULIS KARYA SASTRA",
+  "BELAJAR SAHAM","RELAWAN JABER KOTA TASIK","BELAJAR MENULIS BUKU",
+  "PPKN 7C","PPKN 7A 2021-2022"
+];
+
+function defaultState(){
+  return {
+    docTitle   : 'FORMAT KEGIATAN PENYEBARAN E-BOOK',
+    flipLink   : 'https://online.fliphtml5.com/yneup/nlic/',
+    mediaLabel : 'WA dan Tele',
+    videoEnabled: false,
+    note       : 'Agar tidak ada duplikasi dan hanya menyebar di grup whatsapp',
+    groups     : [ newGroup() ]
+  };
+}
+function newGroup(name){
+  return { id: uid(), name: name || '', wa: null, video: null };
+}
+
+let state = loadState() || defaultState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !Array.isArray(s.groups)) return null;
+    return s;
+  }catch(e){ return null; }
+}
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ /* kuota penuh karena gambar besar — abaikan */ }
+}
+
+/* =========================================================
+   IMAGE → DATA URL
+   ========================================================= */
+function fileToDataURL(file, maxW = 900, quality = 0.82){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const c = document.createElement('canvas');
+        c.width  = Math.round(img.width  * scale);
+        c.height = Math.round(img.height * scale);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* =========================================================
+   RENDER: DAFTAR GRUP (SIDEBAR)
+   ========================================================= */
+const groupList = $('#groupList');
+
+function renderGroupList(){
+  groupList.innerHTML = '';
+  state.groups.forEach((g, i) => {
+    const row = document.createElement('div');
+    row.className = 'grow';
+    row.dataset.id = g.id;
+    row.innerHTML = `
+      <div class="gnum">${i + 1}</div>
+      <input class="gname" placeholder="Nama grup..." value="${esc(g.name)}">
+      <label class="thumb ${g.wa ? 'has' : ''}" title="Screenshot Grup WA">
+        ${g.wa ? `<img src="${g.wa}" alt=""><span class="clear" data-ch="wa">×</span>` : `<span>+ WA</span>`}
+        <input type="file" accept="image/*" data-ch="wa" hidden>
+      </label>
+      ${state.videoEnabled ? `
+      <label class="thumb ${g.video ? 'has' : ''}" title="Screenshot Video">
+        ${g.video ? `<img src="${g.video}" alt=""><span class="clear" data-ch="video">×</span>` : `<span>+ Vid</span>`}
+        <input type="file" accept="image/*" data-ch="video" hidden>
+      </label>` : ``}
+      <button class="del" title="Hapus baris">✕</button>
+    `;
+    groupList.appendChild(row);
+  });
+  updateStats();
+}
+
+groupList.addEventListener('input', e => {
+  if(!e.target.classList.contains('gname')) return;
+  const g = getGroupFromEl(e.target);
+  if(!g) return;
+  g.name = e.target.value;
+  save(); renderPreview(); updateStats();
+});
+
+groupList.addEventListener('change', async e => {
+  const inp = e.target;
+  if(inp.type !== 'file') return;
+  const g = getGroupFromEl(inp);
+  if(!g || !inp.files || !inp.files[0]) return;
+  try{
+    g[inp.dataset.ch] = await fileToDataURL(inp.files[0]);
+    save(); renderGroupList(); renderPreview();
+  }catch(err){ alert('Gagal memuat gambar: ' + err.message); }
+});
+
+groupList.addEventListener('click', e => {
+  if(e.target.classList.contains('clear')){
+    e.preventDefault(); e.stopPropagation();
+    const g = getGroupFromEl(e.target);
+    if(g){ g[e.target.dataset.ch] = null; save(); renderGroupList(); renderPreview(); }
+    return;
+  }
+  if(e.target.classList.contains('del')){
+    const g = getGroupFromEl(e.target);
+    state.groups = state.groups.filter(x => x.id !== g.id);
+    if(!state.groups.length) state.groups.push(newGroup());
+    save(); renderGroupList(); renderPreview();
+  }
+});
+
+groupList.addEventListener('dragover', e => {
+  const t = e.target.closest('.thumb');
+  if(t){ e.preventDefault(); t.classList.add('drag'); }
+});
+groupList.addEventListener('dragleave', e => {
+  const t = e.target.closest('.thumb');
+  if(t) t.classList.remove('drag');
+});
+groupList.addEventListener('drop', async e => {
+  const t = e.target.closest('.thumb');
+  if(!t) return;
+  e.preventDefault(); t.classList.remove('drag');
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(!f) return;
+  const g = getGroupFromEl(t);
+  const ch = t.querySelector('input[type=file]').dataset.ch;
+  if(!g) return;
+  try{
+    g[ch] = await fileToDataURL(f);
+    save(); renderGroupList(); renderPreview();
+  }catch(err){ alert('Gagal memuat gambar.'); }
+});
+
+function getGroupFromEl(el){
+  const row = el.closest('.grow');
+  if(!row) return null;
+  return state.groups.find(x => x.id === row.dataset.id) || null;
+}
+
+/* =========================================================
+   STATISTIK
+   ========================================================= */
+function updateStats(){
+  const named = state.groups.filter(g => g.name.trim() !== '');
+  const shots = state.groups.reduce((n, g) =>
+      n + (g.wa ? 1 : 0) + (state.videoEnabled && g.video ? 1 : 0), 0);
+
+  $('#chipTotal').textContent = named.length + ' grup';
+  $('#chipShot').textContent  = shots + ' screenshot';
+
+  const seen = {}, dup = [];
+  named.forEach(g => {
+    const k = g.name.trim().toLowerCase();
+    if(seen[k]) dup.push(g.name.trim()); else seen[k] = true;
+  });
+  const chip = $('#chipDup');
+  if(dup.length){ chip.style.display = ''; chip.textContent = '⚠ Duplikat: ' + dup.join(', '); }
+  else chip.style.display = 'none';
+}
+
+/* =========================================================
+   BUILD DOKUMEN
+   ========================================================= */
+function buildDoc(){
+  const st = state;
+  const groups = st.groups.filter(g => g.name.trim() !== '');
+  const total  = groups.length;
+  const names  = groups.map(g => g.name.trim()).join(', ');
+
+  let h = '';
+
+  h += `<div style="text-align:center;font-weight:bold;font-size:17pt;
+        text-decoration:underline;margin:0 0 22px;line-height:1.35">
+        ${esc(st.docTitle)}</div>`;
+
+  h += `<div style="margin:0 0 12px;font-size:12pt">
+        1.&nbsp;&nbsp;Link fliphtml
+        <a href="${esc(st.flipLink)}" style="color:#1155cc">${esc(st.flipLink)}</a>
+        </div>`;
+
+  h += `<div style="margin:0 0 10px;font-weight:bold;font-size:12pt">
+        2.&nbsp;&nbsp;Jumlah penyebaran di ${esc(st.mediaLabel)}</div>`;
+  h += `<div style="margin:0 0 6px;font-size:12pt">Total</div>`;
+  h += `<div style="margin:0 0 14px;font-size:12pt">
+        •&nbsp;&nbsp;${esc(st.mediaLabel)}: <b>${total} grup</b></div>`;
+  h += `<div style="margin:0 0 6px;font-weight:bold;font-size:12pt">
+        Rincian penyebaran grup/nama-nama grup:</div>`;
+  h += `<div style="margin:0 0 16px;font-size:12pt;text-align:justify">
+        •&nbsp;&nbsp;${esc(st.mediaLabel)}: ${esc(names) || '-'}</div>`;
+
+  h += `<div style="margin:0 0 12px;font-weight:bold;font-size:12pt">
+        3.&nbsp;&nbsp;Screenshot</div>`;
+
+  h += `<div style="font-weight:bold;font-size:12pt;margin:0 0 8px">Grup WA</div>`;
+  h += shotTable(groups, 'wa');
+
+  if(st.videoEnabled){
+    h += `<div style="font-weight:bold;font-size:12pt;margin:18px 0 8px">Video</div>`;
+    h += shotTable(groups, 'video');
+  }
+
+  if(st.note.trim()){
+    h += `<div style="margin:22px 0 0;font-style:italic;font-size:10.5pt;color:#444">
+          Catatan: ${esc(st.note)}</div>`;
+  }
+
+  return h;
+}
+
+/* ---------------------------------------------------------
+   TABEL SCREENSHOT — tanpa baris header kolom
+   --------------------------------------------------------- */
+function shotTable(groups, ch){
+  if(!groups.length){
+    return `<div style="font-size:11pt;color:#888;font-style:italic">
+            Belum ada grup yang ditambahkan.</div>`;
+  }
+
+  /* Susun pasangan 2 kolom per baris */
+  const rows = [];
+  for(let i = 0; i < groups.length; i += 2) rows.push(groups.slice(i, i + 2));
+
+  let t = `
+  <table style="width:100%;border-collapse:collapse;table-layout:fixed;
+                border:1.5px solid #000;margin:0 0 6px">
+    <colgroup>
+      <col style="width:50%">
+      <col style="width:50%">
+    </colgroup>
+    <tbody>`;
+
+  rows.forEach((pair, rIdx) => {
+    const base = rIdx * 2;
+    t += `<tr>`;
+    pair.forEach((g, cIdx) => {
+      const num = base + cIdx + 1;
+      t += `
+        <td style="border:1.5px solid #000;vertical-align:top;
+                   padding:8px 8px 10px;background:#fff">
+          <div style="font-weight:bold;font-size:10.5pt;margin:0 0 6px;
+                      word-break:break-word;border-bottom:1px dotted #888;
+                      padding-bottom:4px">
+            ${num}. ${esc(g.name.trim())}
+          </div>`;
+
+      const img = g[ch];
+      if(img){
+        t += `<img src="${img}" alt=""
+                 style="width:100%;max-width:100%;display:block;
+                        border:1px solid #888">`;
+      }else{
+        t += `<div style="border:1px dashed #b0b0b0;height:130px;
+                    text-align:center;color:#9a9a9a;font-size:10pt;
+                    padding-top:52px;background:#fafafa">
+                Belum ada screenshot
+              </div>`;
+      }
+      t += `</td>`;
+    });
+
+    /* baris ganjil → sel kosong tetap berbingkai */
+    if(pair.length === 1){
+      t += `<td style="border:1.5px solid #000;background:#fafafa">
+              &nbsp;</td>`;
+    }
+    t += `</tr>`;
+  });
+
+  t += `</tbody></table>`;
+  return t;
+}
+
+/* =========================================================
+   RENDER PREVIEW
+   ========================================================= */
+function renderPreview(){
+  $('#page').innerHTML = buildDoc();
+}
+
+/* =========================================================
+   BINDING FORM
+   ========================================================= */
+[['#docTitle','docTitle'], ['#flipLink','flipLink'],
+ ['#mediaLabel','mediaLabel'], ['#note','note']].forEach(([sel, key]) => {
+  const el = $(sel);
+  el.addEventListener('input', () => {
+    state[key] = el.value;
+    save(); renderPreview();
+  });
+});
+
+$('#videoEnabled').addEventListener('change', e => {
+  state.videoEnabled = e.target.checked;
+  if(state.videoEnabled && state.mediaLabel === 'WA dan Tele'){
+    state.mediaLabel = 'WA dan Video';
+    $('#mediaLabel').value = state.mediaLabel;
+  }
+  save(); renderGroupList(); renderPreview();
+});
+
+$('#btnAdd').addEventListener('click', () => {
+  state.groups.push(newGroup());
+  save(); renderGroupList(); renderPreview();
+  const rows = groupList.querySelectorAll('.gname');
+  if(rows.length) rows[rows.length - 1].focus();
+});
+
+$('#btnClearAll').addEventListener('click', () => {
+  if(!confirm('Kosongkan seluruh daftar grup dan screenshot?')) return;
+  state.groups = [ newGroup() ];
+  save(); renderGroupList(); renderPreview();
+});
+
+$('#btnBulk').addEventListener('click', () => {
+  const raw = $('#bulkNames').value.trim();
+  if(!raw) return;
+  const names = raw.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+  state.groups = state.groups.filter(g => g.name.trim() !== '' || g.wa || g.video);
+  names.forEach(n => state.groups.push(newGroup(n)));
+  if(!state.groups.length) state.groups.push(newGroup());
+  $('#bulkNames').value = '';
+  save(); renderGroupList(); renderPreview();
+});
+
+$('#btnSample').addEventListener('click', () => {
+  if(!confirm('Muat contoh data (12 grup dari file PENA KITA)? Data saat ini akan diganti.')) return;
+  state = {
+    docTitle: 'FORMAT KEGIATAN PENYEBARAN E-BOOK PENA KITA',
+    flipLink: 'https://online.fliphtml5.com/yneup/nlic/',
+    mediaLabel: 'WA dan Tele',
+    videoEnabled: false,
+    note: 'Agar tidak ada duplikasi dan hanya menyebar di grup whatsapp',
+    groups: SAMPLE_NAMES.map(n => newGroup(n))
+  };
+  syncFormFromState();
+  save(); renderGroupList(); renderPreview();
+});
+
+$('#btnReset').addEventListener('click', () => {
+  if(!confirm('Reset seluruh formulir ke kondisi awal?')) return;
+  state = defaultState();
+  syncFormFromState();
+  save(); renderGroupList(); renderPreview();
+});
+
+$('#btnPrint').addEventListener('click', () => window.print());
+
+$('#btnDoc').addEventListener('click', () => {
+  const title = (state.docTitle || 'Format Penyebaran E-Book').trim();
+  const html =
+`<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>${esc(title)}</title>
+<!--[if gte mso 9]><xml>
+<w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument>
+</xml><![endif]-->
+<style>
+@page{size:A4;margin:2cm}
+body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.5;color:#000}
+img{max-width:100%}
+table{border-collapse:collapse}
+td,th{border:1.5px solid #000}
+</style>
+</head>
+<body>${buildDoc()}</body>
+</html>`;
+
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = title.replace(/[^\w\s\-()]/g, '').trim().replace(/\s+/g, ' ') + '.doc';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 600);
+});
+
+/* =========================================================
+   SINKRONISASI FORM
+   ========================================================= */
+function syncFormFromState(){
+  $('#docTitle').value   = state.docTitle;
+  $('#flipLink').value   = state.flipLink;
+  $('#mediaLabel').value = state.mediaLabel;
+  $('#note').value       = state.note;
+  $('#videoEnabled').checked = !!state.videoEnabled;
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+(function init(){
+  if(!state.groups.length) state.groups.push(newGroup());
+  syncFormFromState();
+  renderGroupList();
+  renderPreview();
+})();
+</script>
+</body>
+</html>
