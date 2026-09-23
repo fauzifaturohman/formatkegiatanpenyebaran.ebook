@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Generator Format Kegiatan Penyebaran E-Book</title>
+<title>Generator Format Kegiatan Penyebaran E-Book (DOCX)</title>
 <style>
 :root{
   --bg:#eef2f7;--line:#dbe3ec;--ink:#1e293b;--muted:#64748b;
@@ -29,6 +29,7 @@ body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
 .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
 .btn.primary:hover{background:var(--brand-dark)}
 .btn.ghost{background:transparent}
+.btn:disabled{opacity:.55;cursor:wait}
 
 /* ---------- LAYOUT ---------- */
 main{display:grid;grid-template-columns:430px 1fr;align-items:start}
@@ -83,13 +84,13 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
 
 /* ---------- STAGE / PAGE ---------- */
 .stage{padding:24px;overflow-x:auto}
-.page{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:18mm 16mm;
+.page{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:12.7mm;
   box-shadow:0 8px 30px rgba(15,23,42,.12);border-radius:2px;
   font-family:"Times New Roman",Georgia,serif;font-size:12pt;line-height:1.5;color:#000}
 .page a{color:#1155cc}
 
-/* ---------- PRINT ---------- */
-@page{size:A4;margin:15mm}
+/* ---------- PRINT (A4 + Narrow 1,27 cm) ---------- */
+@page{size:A4;margin:12.7mm}
 @media print{
   body{background:#fff}
   .topbar,.sidebar{display:none !important}
@@ -111,14 +112,14 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
     <span class="logo">📘</span>
     <div>
       <h1>Generator Format Kegiatan Penyebaran E-Book</h1>
-      <p>Susun laporan penyebaran e-book ke grup WhatsApp — otomatis &amp; rapi</p>
+      <p>Hasil unduhan: <b>DOCX</b> · A4 · Margin Narrow (0,5")</p>
     </div>
   </div>
   <div class="actions">
     <button class="btn ghost" id="btnSample">Contoh Data</button>
     <button class="btn ghost" id="btnReset">Reset</button>
     <button class="btn" id="btnPrint">🖨 Cetak / PDF</button>
-    <button class="btn primary" id="btnDoc">⬇ Unduh .doc</button>
+    <button class="btn primary" id="btnDocx">⬇ Unduh .docx</button>
   </div>
 </header>
 
@@ -178,9 +179,13 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
         <li>Isi judul, link fliphtml, dan label media.</li>
         <li>Tambahkan nama grup (bisa borongan lewat impor cepat).</li>
         <li>Klik kotak <b>+ WA</b> / <b>+ Vid</b> untuk unggah screenshot
-            (bisa juga <i>drag &amp; drop</i> gambar ke kotak).</li>
-        <li>Klik <b>Unduh .doc</b> atau <b>Cetak / PDF</b>.</li>
+            (bisa juga <i>drag &amp; drop</i>).</li>
+        <li>Klik <b>Unduh .docx</b> → file Word asli, A4, margin Narrow.</li>
       </ol>
+      <p style="font-size:12px;color:#64748b;margin:10px 0 0;line-height:1.6">
+        <b>Catatan:</b> Gambar otomatis dikompres (maks. 900 px, JPEG 82%)
+        agar ukuran file tetap wajar.
+      </p>
     </section>
 
   </aside>
@@ -193,7 +198,7 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
 
 <script>
 /* =========================================================
-   HELPERS
+   1. HELPERS UMUM
    ========================================================= */
 const $  = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -203,11 +208,20 @@ function esc(s){
     {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
   ));
 }
+function xesc(s){
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+/* Ambil src gambar — mendukung format lama (string) & baru (objek) */
+function imgSrc(v){
+  if(!v) return null;
+  return typeof v === 'string' ? v : v.data;
+}
 
 /* =========================================================
-   STATE
+   2. STATE
    ========================================================= */
-const STORAGE_KEY = 'ebook-sebaran-draft-v1';
+const STORAGE_KEY = 'ebook-sebaran-draft-v2';
 
 const SAMPLE_NAMES = [
   "EX PELATIHAN KWU","BARUDAK JADUL REMAKO","PPKN 7D","BINCANG BISNIS TASIKMALAYA",
@@ -216,6 +230,9 @@ const SAMPLE_NAMES = [
   "PPKN 7C","PPKN 7A 2021-2022"
 ];
 
+function newGroup(name){
+  return { id: uid(), name: name || '', wa: null, video: null };
+}
 function defaultState(){
   return {
     docTitle   : 'FORMAT KEGIATAN PENYEBARAN E-BOOK',
@@ -226,12 +243,6 @@ function defaultState(){
     groups     : [ newGroup() ]
   };
 }
-function newGroup(name){
-  return { id: uid(), name: name || '', wa: null, video: null };
-}
-
-let state = loadState() || defaultState();
-
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -243,11 +254,12 @@ function loadState(){
 }
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e){ /* kuota penuh karena gambar besar — abaikan */ }
+  catch(e){ /* kuota localStorage penuh — abaikan */ }
 }
+let state = loadState() || defaultState();
 
 /* =========================================================
-   IMAGE → DATA URL
+   3. GAMBAR → DATA URL (+ dimensi)
    ========================================================= */
 function fileToDataURL(file, maxW = 900, quality = 0.82){
   return new Promise((resolve, reject) => {
@@ -258,14 +270,15 @@ function fileToDataURL(file, maxW = 900, quality = 0.82){
       img.onerror = reject;
       img.onload = () => {
         const scale = Math.min(1, maxW / img.width);
+        const w = Math.max(1, Math.round(img.width  * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
         const c = document.createElement('canvas');
-        c.width  = Math.round(img.width  * scale);
-        c.height = Math.round(img.height * scale);
+        c.width = w; c.height = h;
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, c.width, c.height);
-        ctx.drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL('image/jpeg', quality));
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve({ data: c.toDataURL('image/jpeg', quality), w, h });
       };
       img.src = e.target.result;
     };
@@ -273,8 +286,21 @@ function fileToDataURL(file, maxW = 900, quality = 0.82){
   });
 }
 
+/* Pastikan objek gambar punya {data,w,h} — untuk data lama berbentuk string */
+function ensureDims(v){
+  if(!v) return Promise.resolve(null);
+  if(typeof v === 'object' && v.data && v.w && v.h) return Promise.resolve(v);
+  const data = typeof v === 'string' ? v : v.data;
+  return new Promise(res => {
+    const im = new Image();
+    im.onload  = () => res({ data, w: im.naturalWidth || 900, h: im.naturalHeight || 600 });
+    im.onerror = () => res({ data, w: 900, h: 600 });
+    im.src = data;
+  });
+}
+
 /* =========================================================
-   RENDER: DAFTAR GRUP (SIDEBAR)
+   4. RENDER: DAFTAR GRUP (SIDEBAR)
    ========================================================= */
 const groupList = $('#groupList');
 
@@ -284,16 +310,18 @@ function renderGroupList(){
     const row = document.createElement('div');
     row.className = 'grow';
     row.dataset.id = g.id;
+    const waSrc = imgSrc(g.wa);
+    const vdSrc = imgSrc(g.video);
     row.innerHTML = `
       <div class="gnum">${i + 1}</div>
       <input class="gname" placeholder="Nama grup..." value="${esc(g.name)}">
-      <label class="thumb ${g.wa ? 'has' : ''}" title="Screenshot Grup WA">
-        ${g.wa ? `<img src="${g.wa}" alt=""><span class="clear" data-ch="wa">×</span>` : `<span>+ WA</span>`}
+      <label class="thumb ${waSrc ? 'has' : ''}" title="Screenshot Grup WA">
+        ${waSrc ? `<img src="${waSrc}" alt=""><span class="clear" data-ch="wa">×</span>` : `<span>+ WA</span>`}
         <input type="file" accept="image/*" data-ch="wa" hidden>
       </label>
       ${state.videoEnabled ? `
-      <label class="thumb ${g.video ? 'has' : ''}" title="Screenshot Video">
-        ${g.video ? `<img src="${g.video}" alt=""><span class="clear" data-ch="video">×</span>` : `<span>+ Vid</span>`}
+      <label class="thumb ${vdSrc ? 'has' : ''}" title="Screenshot Video">
+        ${vdSrc ? `<img src="${vdSrc}" alt=""><span class="clear" data-ch="video">×</span>` : `<span>+ Vid</span>`}
         <input type="file" accept="image/*" data-ch="video" hidden>
       </label>` : ``}
       <button class="del" title="Hapus baris">✕</button>
@@ -367,7 +395,7 @@ function getGroupFromEl(el){
 }
 
 /* =========================================================
-   STATISTIK
+   5. STATISTIK
    ========================================================= */
 function updateStats(){
   const named = state.groups.filter(g => g.name.trim() !== '');
@@ -388,24 +416,22 @@ function updateStats(){
 }
 
 /* =========================================================
-   BUILD DOKUMEN
+   6. PREVIEW HTML (panel kanan)
    ========================================================= */
-function buildDoc(){
+function buildPreviewHtml(){
   const st = state;
   const groups = st.groups.filter(g => g.name.trim() !== '');
   const total  = groups.length;
   const names  = groups.map(g => g.name.trim()).join(', ');
 
   let h = '';
-
   h += `<div style="text-align:center;font-weight:bold;font-size:17pt;
         text-decoration:underline;margin:0 0 22px;line-height:1.35">
         ${esc(st.docTitle)}</div>`;
 
   h += `<div style="margin:0 0 12px;font-size:12pt">
         1.&nbsp;&nbsp;Link fliphtml
-        <a href="${esc(st.flipLink)}" style="color:#1155cc">${esc(st.flipLink)}</a>
-        </div>`;
+        <a href="${esc(st.flipLink)}" style="color:#1155cc">${esc(st.flipLink)}</a></div>`;
 
   h += `<div style="margin:0 0 10px;font-weight:bold;font-size:12pt">
         2.&nbsp;&nbsp;Jumlah penyebaran di ${esc(st.mediaLabel)}</div>`;
@@ -421,41 +447,31 @@ function buildDoc(){
         3.&nbsp;&nbsp;Screenshot</div>`;
 
   h += `<div style="font-weight:bold;font-size:12pt;margin:0 0 8px">Grup WA</div>`;
-  h += shotTable(groups, 'wa');
+  h += previewShotTable(groups, 'wa');
 
   if(st.videoEnabled){
     h += `<div style="font-weight:bold;font-size:12pt;margin:18px 0 8px">Video</div>`;
-    h += shotTable(groups, 'video');
+    h += previewShotTable(groups, 'video');
   }
 
   if(st.note.trim()){
     h += `<div style="margin:22px 0 0;font-style:italic;font-size:10.5pt;color:#444">
           Catatan: ${esc(st.note)}</div>`;
   }
-
   return h;
 }
 
-/* ---------------------------------------------------------
-   TABEL SCREENSHOT — tanpa baris header kolom
-   --------------------------------------------------------- */
-function shotTable(groups, ch){
+function previewShotTable(groups, ch){
   if(!groups.length){
     return `<div style="font-size:11pt;color:#888;font-style:italic">
             Belum ada grup yang ditambahkan.</div>`;
   }
-
-  /* Susun pasangan 2 kolom per baris */
   const rows = [];
   for(let i = 0; i < groups.length; i += 2) rows.push(groups.slice(i, i + 2));
 
-  let t = `
-  <table style="width:100%;border-collapse:collapse;table-layout:fixed;
+  let t = `<table style="width:100%;border-collapse:collapse;table-layout:fixed;
                 border:1.5px solid #000;margin:0 0 6px">
-    <colgroup>
-      <col style="width:50%">
-      <col style="width:50%">
-    </colgroup>
+    <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
     <tbody>`;
 
   rows.forEach((pair, rIdx) => {
@@ -463,34 +479,24 @@ function shotTable(groups, ch){
     t += `<tr>`;
     pair.forEach((g, cIdx) => {
       const num = base + cIdx + 1;
-      t += `
-        <td style="border:1.5px solid #000;vertical-align:top;
+      t += `<td style="border:1.5px solid #000;vertical-align:top;
                    padding:8px 8px 10px;background:#fff">
           <div style="font-weight:bold;font-size:10.5pt;margin:0 0 6px;
                       word-break:break-word;border-bottom:1px dotted #888;
-                      padding-bottom:4px">
-            ${num}. ${esc(g.name.trim())}
-          </div>`;
-
-      const img = g[ch];
-      if(img){
-        t += `<img src="${img}" alt=""
-                 style="width:100%;max-width:100%;display:block;
-                        border:1px solid #888">`;
+                      padding-bottom:4px">${num}. ${esc(g.name.trim())}</div>`;
+      const src = imgSrc(g[ch]);
+      if(src){
+        t += `<img src="${src}" alt=""
+                 style="width:100%;max-width:100%;display:block;border:1px solid #888">`;
       }else{
-        t += `<div style="border:1px dashed #b0b0b0;height:130px;
-                    text-align:center;color:#9a9a9a;font-size:10pt;
-                    padding-top:52px;background:#fafafa">
-                Belum ada screenshot
-              </div>`;
+        t += `<div style="border:1px dashed #b0b0b0;height:130px;text-align:center;
+                    color:#9a9a9a;font-size:10pt;padding-top:52px;background:#fafafa">
+                Belum ada screenshot</div>`;
       }
       t += `</td>`;
     });
-
-    /* baris ganjil → sel kosong tetap berbingkai */
     if(pair.length === 1){
-      t += `<td style="border:1.5px solid #000;background:#fafafa">
-              &nbsp;</td>`;
+      t += `<td style="border:1.5px solid #000;background:#fafafa">&nbsp;</td>`;
     }
     t += `</tr>`;
   });
@@ -499,15 +505,437 @@ function shotTable(groups, ch){
   return t;
 }
 
+function renderPreview(){ $('#page').innerHTML = buildPreviewHtml(); }
+
 /* =========================================================
-   RENDER PREVIEW
+   7. ZIP WRITER (store, tanpa kompresi) — untuk DOCX
    ========================================================= */
-function renderPreview(){
-  $('#page').innerHTML = buildDoc();
+function crc32(buf){
+  let table = crc32._t;
+  if(!table){
+    table = crc32._t = new Uint32Array(256);
+    for(let i = 0; i < 256; i++){
+      let c = i;
+      for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      table[i] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for(let i = 0; i < buf.length; i++){
+    crc = (crc >>> 8) ^ table[(crc ^ buf[i]) & 0xFF];
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function zipSync(files){
+  const enc = new TextEncoder();
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+
+  const d = new Date();
+  const dosTime = ((d.getHours() & 31) << 11) | ((d.getMinutes() & 63) << 5) | ((d.getSeconds() / 2) & 31);
+  const dosDate = (((d.getFullYear() - 1980) & 127) << 9) | (((d.getMonth() + 1) & 15) << 5) | (d.getDate() & 31);
+
+  for(const f of files){
+    const nameBytes = enc.encode(f.name);
+    const data = f.data;
+    const crc = crc32(data);
+    const size = data.length;
+
+    /* --- Local file header --- */
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0,  0x04034b50, true);
+    lv.setUint16(4,  20, true);       // version needed
+    lv.setUint16(6,  0, true);        // flags
+    lv.setUint16(8,  0, true);        // method = store
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+
+    chunks.push(lh, data);
+
+    /* --- Central directory header --- */
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0,  0x02014b50, true);
+    cv.setUint16(4,  20, true);       // version made by
+    cv.setUint16(6,  20, true);       // version needed
+    cv.setUint16(8,  0, true);        // flags
+    cv.setUint16(10, 0, true);        // method
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);        // extra len
+    cv.setUint16(32, 0, true);        // comment len
+    cv.setUint16(34, 0, true);        // disk start
+    cv.setUint16(36, 0, true);        // internal attrs
+    cv.setUint32(38, 0, true);        // external attrs
+    cv.setUint32(42, offset, true);   // local header offset
+    cd.set(nameBytes, 46);
+    central.push(cd);
+
+    offset += lh.length + size;
+  }
+
+  const cdSize = central.reduce((s, c) => s + c.length, 0);
+  const cdOffset = offset;
+
+  /* --- End of central directory --- */
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0,  0x06054b50, true);
+  ev.setUint16(4,  0, true);
+  ev.setUint16(6,  0, true);
+  ev.setUint16(8,  files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, cdOffset, true);
+  ev.setUint16(20, 0, true);
+
+  const all = [...chunks, ...central, eocd];
+  const total = all.reduce((s, c) => s + c.length, 0);
+  const out = new Uint8Array(total);
+  let p = 0;
+  for(const c of all){ out.set(c, p); p += c.length; }
+  return out;
 }
 
 /* =========================================================
-   BINDING FORM
+   8. DOCX BUILDER
+   ========================================================= */
+const NS_DOC = `xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"`;
+
+const FONT_XML = '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>';
+
+/* --- daftar gambar & relasi --- */
+let images = [];
+let docPrId = 1;
+
+function addImage(imgObj){
+  const idx  = images.length + 1;
+  const rid  = 'rId' + idx;
+  const name = 'image' + idx + '.jpeg';
+  images.push({ rid, name, data: imgObj.data });
+  return { rid, id: docPrId++ };
+}
+
+/* --- properti run --- */
+function rPrXml(o = {}){
+  let s = '<w:rPr>' + FONT_XML;
+  if(o.bold)      s += '<w:b/><w:bCs/>';
+  if(o.italic)    s += '<w:i/><w:iCs/>';
+  if(o.underline) s += '<w:u w:val="single"/>';
+  if(o.color)     s += `<w:color w:val="${o.color}"/>`;
+  if(o.size)      s += `<w:sz w:val="${o.size}"/><w:szCs w:val="${o.size}"/>`;
+  s += '</w:rPr>';
+  return s;
+}
+function runXml(text, o = {}){
+  return `<w:r>${rPrXml(o)}<w:t xml:space="preserve">${xesc(text)}</w:t></w:r>`;
+}
+function paraXml(content, o = {}){
+  let pPr = '<w:pPr>';
+  if(o.align) pPr += `<w:jc w:val="${o.align}"/>`;
+  pPr += `<w:spacing w:after="${o.after ?? 120}" w:line="276" w:lineRule="auto"/>`;
+  if(o.indent) pPr += `<w:ind w:left="${o.indent}"/>`;
+  pPr += rPrXml(o);
+  pPr += '</w:pPr>';
+  const runs = (typeof content === 'string') ? runXml(content, o) : content;
+  return `<w:p>${pPr}${runs}</w:p>`;
+}
+
+/* --- gambar (DrawingML) --- */
+function drawXml(rid, wPt, hPt, id){
+  const cx = Math.round(wPt * 12700);
+  const cy = Math.round(hPt * 12700);
+  return `<w:r><w:drawing>
+    <wp:inline distT="0" distB="0" distL="0" distR="0">
+      <wp:extent cx="${cx}" cy="${cy}"/>
+      <wp:effectExtent l="0" t="0" r="0" b="0"/>
+      <wp:docPr id="${id}" name="Picture ${id}"/>
+      <a:graphic>
+        <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+          <pic:pic>
+            <pic:nvPicPr>
+              <pic:cNvPr id="${id}" name="Picture ${id}"/>
+              <pic:cNvPicPr/>
+            </pic:nvPicPr>
+            <pic:blipFill>
+              <a:blip r:embed="${rid}"/>
+              <a:stretch><a:fillRect/></a:stretch>
+            </pic:blipFill>
+            <pic:spPr>
+              <a:xfrm>
+                <a:off x="0" y="0"/>
+                <a:ext cx="${cx}" cy="${cy}"/>
+              </a:xfrm>
+              <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+            </pic:spPr>
+          </pic:pic>
+        </a:graphicData>
+      </a:graphic>
+    </wp:inline>
+  </w:drawing></w:r>`;
+}
+
+/* --- hitung ukuran gambar agar muat dalam sel --- */
+function fitSize(w, h, maxW, maxH){
+  if(!w || !h) return { w: maxW, h: maxW * 0.75 };
+  const r = Math.min(maxW / w, maxH / h);
+  return { w: w * r, h: h * r };
+}
+
+/* --- tabel screenshot (2 kolom, berbingkai penuh) --- */
+function buildShotTableXml(groups, ch){
+  const W = 5233;                 // twips per kolom
+  const MAX_W_PT = 240;           // lebar maks gambar (pt)
+  const MAX_H_PT = 330;           // tinggi maks gambar (pt)
+
+  const rows = [];
+  for(let i = 0; i < groups.length; i += 2) rows.push(groups.slice(i, i + 2));
+
+  let xml = `<w:tbl>
+    <w:tblPr>
+      <w:tblW w:w="10466" w:type="dxa"/>
+      <w:jc w:val="center"/>
+      <w:tblBorders>
+        <w:top     w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        <w:left    w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        <w:bottom  w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        <w:right   w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        <w:insideH w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        <w:insideV w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+      </w:tblBorders>
+      <w:tblCellMar>
+        <w:top    w:w="80"  w:type="dxa"/>
+        <w:left   w:w="100" w:type="dxa"/>
+        <w:bottom w:w="80"  w:type="dxa"/>
+        <w:right  w:w="100" w:type="dxa"/>
+      </w:tblCellMar>
+    </w:tblPr>
+    <w:tblGrid>
+      <w:gridCol w:w="${W}"/><w:gridCol w:w="${W}"/>
+    </w:tblGrid>`;
+
+  rows.forEach((pair, rIdx) => {
+    xml += '<w:tr>';
+    pair.forEach((g, cIdx) => {
+      const num = rIdx * 2 + cIdx + 1;
+      let cell = '';
+      cell += paraXml(`${num}. ${g.name.trim()}`,
+                      { bold: true, size: 21, after: 60 });
+
+      const img = g[ch];
+      if(img && img.data){
+        const fit = fitSize(img.w, img.h, MAX_W_PT, MAX_H_PT);
+        const pic = addImage(img);
+        cell += `<w:p>
+          <w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>
+          ${drawXml(pic.rid, fit.w, fit.h, pic.id)}
+        </w:p>`;
+      }else{
+        cell += paraXml('— belum ada screenshot —',
+                        { align: 'center', italic: true, size: 18, color: '999999', after: 0 });
+      }
+
+      xml += `<w:tc>
+        <w:tcPr><w:tcW w:w="${W}" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>
+        ${cell}
+      </w:tc>`;
+    });
+
+    if(pair.length === 1){
+      xml += `<w:tc>
+        <w:tcPr><w:tcW w:w="${W}" w:type="dxa"/></w:tcPr>
+        <w:p/>
+      </w:tc>`;
+    }
+    xml += '</w:tr>';
+  });
+
+  xml += '</w:tbl>';
+  return xml;
+}
+
+/* --- dokumen utama --- */
+function buildDocumentXml(){
+  const st = state;
+  const groups = st.groups.filter(g => g.name.trim() !== '');
+  const total  = groups.length;
+  const names  = groups.map(g => g.name.trim()).join(', ');
+
+  let body = '';
+
+  /* Judul */
+  body += paraXml(st.docTitle, {
+    bold: true, underline: true, align: 'center', size: 34, after: 400
+  });
+
+  /* 1. Link */
+  body += paraXml(
+    runXml('1.  Link fliphtml ', { size: 24 }) +
+    runXml(st.flipLink, { size: 24, color: '1155CC', underline: true }),
+    { after: 160 }
+  );
+
+  /* 2. Jumlah penyebaran */
+  body += paraXml('2.  Jumlah penyebaran di ' + st.mediaLabel,
+                  { bold: true, size: 24, after: 140 });
+  body += paraXml('Total', { size: 24, after: 60 });
+  body += paraXml('•  ' + st.mediaLabel + ': ' + total + ' grup',
+                  { size: 24, after: 160 });
+  body += paraXml('Rincian penyebaran grup/nama-nama grup:',
+                  { bold: true, size: 24, after: 100 });
+  body += paraXml('•  ' + st.mediaLabel + ': ' + (names || '-'),
+                  { size: 24, after: 220, align: 'both' });
+
+  /* 3. Screenshot */
+  body += paraXml('3.  Screenshot', { bold: true, size: 24, after: 160 });
+  body += paraXml('Grup WA', { bold: true, size: 24, after: 100 });
+  body += buildShotTableXml(groups, 'wa');
+  body += '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>';
+
+  if(st.videoEnabled){
+    body += paraXml('Video', { bold: true, size: 24, after: 100 });
+    body += buildShotTableXml(groups, 'video');
+    body += '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>';
+  }
+
+  if(st.note.trim()){
+    body += paraXml('Catatan: ' + st.note,
+                    { italic: true, size: 21, color: '444444', after: 0 });
+  }
+
+  /* ==== SECTPR: A4 + Narrow margin ====
+     A4          : 11906 x 16838 twips
+     Narrow (0,5"): 720 twips semua sisi  */
+  const sectPr = `<w:sectPr>
+    <w:pgSz w:w="11906" w:h="16838"/>
+    <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"
+             w:header="720" w:footer="720" w:gutter="0"/>
+    <w:cols w:space="720"/>
+    <w:docGrid w:linePitch="360"/>
+  </w:sectPr>`;
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document ${NS_DOC}>
+<w:body>${body}${sectPr}</w:body>
+</w:document>`;
+}
+
+/* --- relasi dokumen (gambar) --- */
+function buildRelsXml(){
+  let s = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`;
+  images.forEach(im => {
+    s += `<Relationship Id="${im.rid}"
+      Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+      Target="media/${im.name}"/>`;
+  });
+  s += '</Relationships>';
+  return s;
+}
+
+/* --- konversi data URL → byte --- */
+function dataURLtoBytes(dataURL){
+  const base64 = dataURL.split(',')[1] || '';
+  const bin = atob(base64);
+  const arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+
+/* --- ekspor DOCX --- */
+async function exportDocx(btn){
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Menyiapkan…';
+
+  try{
+    /* pastikan semua gambar punya dimensi */
+    for(const g of state.groups){
+      if(g.wa)    g.wa    = await ensureDims(g.wa);
+      if(g.video) g.video = await ensureDims(g.video);
+    }
+
+    /* reset koleksi gambar */
+    images = [];
+    docPrId = 1;
+
+    const docXml = buildDocumentXml();
+
+    const enc = new TextEncoder();
+
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Default Extension="jpeg" ContentType="image/jpeg"/>
+  <Default Extension="jpg"  ContentType="image/jpeg"/>
+  <Default Extension="png"  ContentType="image/png"/>
+  <Override PartName="/word/document.xml"
+    ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+    const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+    Target="word/document.xml"/>
+</Relationships>`;
+
+    const files = [
+      { name: '[Content_Types].xml',           data: enc.encode(contentTypes) },
+      { name: '_rels/.rels',                   data: enc.encode(rootRels) },
+      { name: 'word/document.xml',             data: enc.encode(docXml) },
+      { name: 'word/_rels/document.xml.rels',  data: enc.encode(buildRelsXml()) }
+    ];
+
+    images.forEach(im => {
+      files.push({ name: 'word/media/' + im.name, data: dataURLtoBytes(im.data) });
+    });
+
+    const zipBytes = zipSync(files);
+    const blob = new Blob([zipBytes], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+
+    const title = (state.docTitle || 'Format Penyebaran E-Book').trim();
+    const safe  = title.replace(/[^\w\s\-()]/g, '').trim().replace(/\s+/g, ' ') || 'Format Penyebaran E-Book';
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safe + '.docx';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 800);
+
+  }catch(err){
+    console.error(err);
+    alert('Gagal membuat DOCX: ' + err.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+/* =========================================================
+   9. BINDING FORM
    ========================================================= */
 [['#docTitle','docTitle'], ['#flipLink','flipLink'],
  ['#mediaLabel','mediaLabel'], ['#note','note']].forEach(([sel, key]) => {
@@ -574,42 +1002,12 @@ $('#btnReset').addEventListener('click', () => {
 
 $('#btnPrint').addEventListener('click', () => window.print());
 
-$('#btnDoc').addEventListener('click', () => {
-  const title = (state.docTitle || 'Format Penyebaran E-Book').trim();
-  const html =
-`<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office"
-      xmlns:w="urn:schemas-microsoft-com:office:word"
-      xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="utf-8">
-<title>${esc(title)}</title>
-<!--[if gte mso 9]><xml>
-<w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument>
-</xml><![endif]-->
-<style>
-@page{size:A4;margin:2cm}
-body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.5;color:#000}
-img{max-width:100%}
-table{border-collapse:collapse}
-td,th{border:1.5px solid #000}
-</style>
-</head>
-<body>${buildDoc()}</body>
-</html>`;
-
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = title.replace(/[^\w\s\-()]/g, '').trim().replace(/\s+/g, ' ') + '.doc';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 600);
+$('#btnDocx').addEventListener('click', function(){
+  exportDocx(this);
 });
 
 /* =========================================================
-   SINKRONISASI FORM
+   10. SINKRONISASI FORM
    ========================================================= */
 function syncFormFromState(){
   $('#docTitle').value   = state.docTitle;
@@ -620,7 +1018,7 @@ function syncFormFromState(){
 }
 
 /* =========================================================
-   INIT
+   11. INIT
    ========================================================= */
 (function init(){
   if(!state.groups.length) state.groups.push(newGroup());
