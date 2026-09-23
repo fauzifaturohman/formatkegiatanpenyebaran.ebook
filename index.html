@@ -89,7 +89,12 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
   font-family:"Times New Roman",Georgia,serif;font-size:12pt;line-height:1.5;color:#000}
 .page a{color:#1155cc}
 
-/* ---------- PRINT (A4 + Narrow 1,27 cm) ---------- */
+/* penanda halaman baru pada preview */
+.page-sep{display:flex;align-items:center;gap:10px;margin:14px 0;color:#94a3b8;
+  font-family:"Segoe UI",sans-serif;font-size:11px;font-weight:600;letter-spacing:.08em}
+.page-sep::before,.page-sep::after{content:"";flex:1;border-top:1.5px dashed #cbd5e1}
+
+/* ---------- PRINT ---------- */
 @page{size:A4;margin:12.7mm}
 @media print{
   body{background:#fff}
@@ -97,6 +102,8 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
   main{display:block}
   .stage{padding:0;overflow:visible}
   .page{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;border-radius:0}
+  .page-sep{page-break-before:always;margin:0;height:0;border:none}
+  .page-sep::before,.page-sep::after{display:none}
 }
 @media(max-width:1080px){
   main{grid-template-columns:1fr}
@@ -112,7 +119,7 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
     <span class="logo">📘</span>
     <div>
       <h1>Generator Format Kegiatan Penyebaran E-Book</h1>
-      <p>Hasil unduhan: <b>DOCX</b> · A4 · Margin Narrow (0,5")</p>
+      <p>Hasil: <b>DOCX</b> · A4 · Margin Narrow · 1 pasang screenshot per halaman</p>
     </div>
   </div>
   <div class="actions">
@@ -143,7 +150,7 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
       </div>
       <label class="switch">
         <input type="checkbox" id="videoEnabled">
-        Sertakan screenshot <b>Video</b> (kolom kedua)
+        Sertakan screenshot <b>Video</b> (section terpisah)
       </label>
       <div class="field" style="margin-top:10px">
         <label>Catatan Penutup</label>
@@ -178,13 +185,13 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
       <ol style="margin:0;padding-left:18px;font-size:12.5px;color:#475569;line-height:1.7">
         <li>Isi judul, link fliphtml, dan label media.</li>
         <li>Tambahkan nama grup (bisa borongan lewat impor cepat).</li>
-        <li>Klik kotak <b>+ WA</b> / <b>+ Vid</b> untuk unggah screenshot
-            (bisa juga <i>drag &amp; drop</i>).</li>
-        <li>Klik <b>Unduh .docx</b> → file Word asli, A4, margin Narrow.</li>
+        <li>Klik kotak <b>+ WA</b> / <b>+ Vid</b> untuk unggah screenshot.</li>
+        <li>Klik <b>Unduh .docx</b> → tiap pasang screenshot otomatis
+            berada di halaman sendiri.</li>
       </ol>
       <p style="font-size:12px;color:#64748b;margin:10px 0 0;line-height:1.6">
-        <b>Catatan:</b> Gambar otomatis dikompres (maks. 900 px, JPEG 82%)
-        agar ukuran file tetap wajar.
+        <b>Format:</b> setiap pasang = baris nama (2 kolom) + baris gambar (2 kolom),
+        dipisah page-break — persis seperti contoh.
       </p>
     </section>
 
@@ -198,7 +205,7 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
 
 <script>
 /* =========================================================
-   1. HELPERS UMUM
+   1. HELPERS
    ========================================================= */
 const $  = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -212,7 +219,6 @@ function xesc(s){
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
                         .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-/* Ambil src gambar — mendukung format lama (string) & baru (objek) */
 function imgSrc(v){
   if(!v) return null;
   return typeof v === 'string' ? v : v.data;
@@ -221,13 +227,13 @@ function imgSrc(v){
 /* =========================================================
    2. STATE
    ========================================================= */
-const STORAGE_KEY = 'ebook-sebaran-draft-v2';
+const STORAGE_KEY = 'ebook-sebaran-draft-v3';
 
 const SAMPLE_NAMES = [
-  "EX PELATIHAN KWU","BARUDAK JADUL REMAKO","PPKN 7D","BINCANG BISNIS TASIKMALAYA",
-  "WIRAUSAHA MUDA JABAR","WIRAUSAHAWAN MUDA","BELAJAR MENULIS KARYA SASTRA",
-  "BELAJAR SAHAM","RELAWAN JABER KOTA TASIK","BELAJAR MENULIS BUKU",
-  "PPKN 7C","PPKN 7A 2021-2022"
+  "Ex Pelatihan KWU","Wirausaha Muda Jabar","Relawan JABER Kota Tasik",
+  "Bincang Bisnis Tasikmalaya","AL-IQBAL FAMILY","WIRAUSAHAWAN MUDA",
+  "PPKn 7C","PPKN 7A 2021-2022","PPKN 7J SALIMBA","Belajar Menulis Buku",
+  "Belajar Saham","Belajar Menulis Karya"
 ];
 
 function newGroup(name){
@@ -254,7 +260,7 @@ function loadState(){
 }
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e){ /* kuota localStorage penuh — abaikan */ }
+  catch(e){}
 }
 let state = loadState() || defaultState();
 
@@ -286,7 +292,6 @@ function fileToDataURL(file, maxW = 900, quality = 0.82){
   });
 }
 
-/* Pastikan objek gambar punya {data,w,h} — untuk data lama berbentuk string */
 function ensureDims(v){
   if(!v) return Promise.resolve(null);
   if(typeof v === 'object' && v.data && v.w && v.h) return Promise.resolve(v);
@@ -300,7 +305,7 @@ function ensureDims(v){
 }
 
 /* =========================================================
-   4. RENDER: DAFTAR GRUP (SIDEBAR)
+   4. RENDER DAFTAR GRUP (SIDEBAR)
    ========================================================= */
 const groupList = $('#groupList');
 
@@ -416,7 +421,7 @@ function updateStats(){
 }
 
 /* =========================================================
-   6. PREVIEW HTML (panel kanan)
+   6. PREVIEW HTML
    ========================================================= */
 function buildPreviewHtml(){
   const st = state;
@@ -447,11 +452,12 @@ function buildPreviewHtml(){
         3.&nbsp;&nbsp;Screenshot</div>`;
 
   h += `<div style="font-weight:bold;font-size:12pt;margin:0 0 8px">Grup WA</div>`;
-  h += previewShotTable(groups, 'wa');
+  h += previewShotSection(groups, 'wa');
 
   if(st.videoEnabled){
+    h += `<div class="page-sep">halaman baru</div>`;
     h += `<div style="font-weight:bold;font-size:12pt;margin:18px 0 8px">Video</div>`;
-    h += previewShotTable(groups, 'video');
+    h += previewShotSection(groups, 'video');
   }
 
   if(st.note.trim()){
@@ -461,54 +467,69 @@ function buildPreviewHtml(){
   return h;
 }
 
-function previewShotTable(groups, ch){
+/* Satu tabel = satu pasang. Tiap pasang dipisah "page-sep" */
+function previewShotSection(groups, ch){
   if(!groups.length){
     return `<div style="font-size:11pt;color:#888;font-style:italic">
             Belum ada grup yang ditambahkan.</div>`;
   }
-  const rows = [];
-  for(let i = 0; i < groups.length; i += 2) rows.push(groups.slice(i, i + 2));
 
-  let t = `<table style="width:100%;border-collapse:collapse;table-layout:fixed;
-                border:1.5px solid #000;margin:0 0 6px">
-    <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
-    <tbody>`;
+  const pairs = [];
+  for(let i = 0; i < groups.length; i += 2) pairs.push(groups.slice(i, i + 2));
 
-  rows.forEach((pair, rIdx) => {
-    const base = rIdx * 2;
-    t += `<tr>`;
+  let out = '';
+  pairs.forEach((pair, pIdx) => {
+    if(pIdx > 0) out += `<div class="page-sep">halaman baru</div>`;
+
+    out += `<table style="width:100%;border-collapse:collapse;table-layout:fixed;
+                  border:1.5px solid #000;margin:0 0 6px">
+      <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+      <tbody>`;
+
+    /* ---- Baris nama ---- */
+    out += `<tr>`;
     pair.forEach((g, cIdx) => {
-      const num = base + cIdx + 1;
-      t += `<td style="border:1.5px solid #000;vertical-align:top;
-                   padding:8px 8px 10px;background:#fff">
-          <div style="font-weight:bold;font-size:10.5pt;margin:0 0 6px;
-                      word-break:break-word;border-bottom:1px dotted #888;
-                      padding-bottom:4px">${num}. ${esc(g.name.trim())}</div>`;
-      const src = imgSrc(g[ch]);
-      if(src){
-        t += `<img src="${src}" alt=""
-                 style="width:100%;max-width:100%;display:block;border:1px solid #888">`;
-      }else{
-        t += `<div style="border:1px dashed #b0b0b0;height:130px;text-align:center;
-                    color:#9a9a9a;font-size:10pt;padding-top:52px;background:#fafafa">
-                Belum ada screenshot</div>`;
-      }
-      t += `</td>`;
+      const num = pIdx * 2 + cIdx + 1;
+      out += `<td style="border:1.5px solid #000;vertical-align:middle;
+                  padding:6px 8px;background:#fff">
+        <div style="font-weight:bold;font-size:11pt">${num}. ${esc(g.name.trim())}</div>
+      </td>`;
     });
     if(pair.length === 1){
-      t += `<td style="border:1.5px solid #000;background:#fafafa">&nbsp;</td>`;
+      out += `<td style="border:1.5px solid #000;background:#fff">&nbsp;</td>`;
     }
-    t += `</tr>`;
-  });
+    out += `</tr>`;
 
-  t += `</tbody></table>`;
-  return t;
+    /* ---- Baris gambar ---- */
+    out += `<tr>`;
+    pair.forEach(g => {
+      const src = imgSrc(g[ch]);
+      let cell;
+      if(src){
+        cell = `<img src="${src}" alt=""
+          style="width:100%;max-width:100%;display:block;border:1px solid #888;margin:0 auto">`;
+      }else{
+        cell = `<div style="border:1px dashed #b0b0b0;height:300px;
+                text-align:center;color:#9a9a9a;font-size:10pt;
+                padding-top:140px;background:#fafafa">Belum ada screenshot</div>`;
+      }
+      out += `<td style="border:1.5px solid #000;vertical-align:top;
+                  padding:6px;background:#fff">${cell}</td>`;
+    });
+    if(pair.length === 1){
+      out += `<td style="border:1.5px solid #000;background:#fff">&nbsp;</td>`;
+    }
+    out += `</tr>`;
+
+    out += `</tbody></table>`;
+  });
+  return out;
 }
 
 function renderPreview(){ $('#page').innerHTML = buildPreviewHtml(); }
 
 /* =========================================================
-   7. ZIP WRITER (store, tanpa kompresi) — untuk DOCX
+   7. ZIP WRITER
    ========================================================= */
 function crc32(buf){
   let table = crc32._t;
@@ -543,13 +564,12 @@ function zipSync(files){
     const crc = crc32(data);
     const size = data.length;
 
-    /* --- Local file header --- */
     const lh = new Uint8Array(30 + nameBytes.length);
     const lv = new DataView(lh.buffer);
     lv.setUint32(0,  0x04034b50, true);
-    lv.setUint16(4,  20, true);       // version needed
-    lv.setUint16(6,  0, true);        // flags
-    lv.setUint16(8,  0, true);        // method = store
+    lv.setUint16(4,  20, true);
+    lv.setUint16(6,  0, true);
+    lv.setUint16(8,  0, true);
     lv.setUint16(10, dosTime, true);
     lv.setUint16(12, dosDate, true);
     lv.setUint32(14, crc, true);
@@ -558,29 +578,27 @@ function zipSync(files){
     lv.setUint16(26, nameBytes.length, true);
     lv.setUint16(28, 0, true);
     lh.set(nameBytes, 30);
-
     chunks.push(lh, data);
 
-    /* --- Central directory header --- */
     const cd = new Uint8Array(46 + nameBytes.length);
     const cv = new DataView(cd.buffer);
     cv.setUint32(0,  0x02014b50, true);
-    cv.setUint16(4,  20, true);       // version made by
-    cv.setUint16(6,  20, true);       // version needed
-    cv.setUint16(8,  0, true);        // flags
-    cv.setUint16(10, 0, true);        // method
+    cv.setUint16(4,  20, true);
+    cv.setUint16(6,  20, true);
+    cv.setUint16(8,  0, true);
+    cv.setUint16(10, 0, true);
     cv.setUint16(12, dosTime, true);
     cv.setUint16(14, dosDate, true);
     cv.setUint32(16, crc, true);
     cv.setUint32(20, size, true);
     cv.setUint32(24, size, true);
     cv.setUint16(28, nameBytes.length, true);
-    cv.setUint16(30, 0, true);        // extra len
-    cv.setUint16(32, 0, true);        // comment len
-    cv.setUint16(34, 0, true);        // disk start
-    cv.setUint16(36, 0, true);        // internal attrs
-    cv.setUint32(38, 0, true);        // external attrs
-    cv.setUint32(42, offset, true);   // local header offset
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
     cd.set(nameBytes, 46);
     central.push(cd);
 
@@ -590,7 +608,6 @@ function zipSync(files){
   const cdSize = central.reduce((s, c) => s + c.length, 0);
   const cdOffset = offset;
 
-  /* --- End of central directory --- */
   const eocd = new Uint8Array(22);
   const ev = new DataView(eocd.buffer);
   ev.setUint32(0,  0x06054b50, true);
@@ -621,7 +638,6 @@ const NS_DOC = `xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006
 
 const FONT_XML = '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>';
 
-/* --- daftar gambar & relasi --- */
 let images = [];
 let docPrId = 1;
 
@@ -633,7 +649,6 @@ function addImage(imgObj){
   return { rid, id: docPrId++ };
 }
 
-/* --- properti run --- */
 function rPrXml(o = {}){
   let s = '<w:rPr>' + FONT_XML;
   if(o.bold)      s += '<w:b/><w:bCs/>';
@@ -657,8 +672,10 @@ function paraXml(content, o = {}){
   const runs = (typeof content === 'string') ? runXml(content, o) : content;
   return `<w:p>${pPr}${runs}</w:p>`;
 }
+function pageBreakXml(){
+  return `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+}
 
-/* --- gambar (DrawingML) --- */
 function drawXml(rid, wPt, hPt, id){
   const cx = Math.round(wPt * 12700);
   const cy = Math.round(hPt * 12700);
@@ -692,72 +709,76 @@ function drawXml(rid, wPt, hPt, id){
   </w:drawing></w:r>`;
 }
 
-/* --- hitung ukuran gambar agar muat dalam sel --- */
 function fitSize(w, h, maxW, maxH){
   if(!w || !h) return { w: maxW, h: maxW * 0.75 };
   const r = Math.min(maxW / w, maxH / h);
   return { w: w * r, h: h * r };
 }
 
-/* --- tabel screenshot (2 kolom, berbingkai penuh) --- */
-function buildShotTableXml(groups, ch){
-  const W = 5233;                 // twips per kolom
-  const MAX_W_PT = 240;           // lebar maks gambar (pt)
-  const MAX_H_PT = 330;           // tinggi maks gambar (pt)
+/* ===========================================================
+   TABEL SCREENSHOT — persis seperti contoh:
+     satu pasang = satu tabel berisi 2 baris:
+       baris 1 : "N. Nama1" | "N+1. Nama2"   (bold, 2 kolom)
+       baris 2 : [gambar 1] | [gambar 2]      (2 kolom)
+     tiap pasang dipisah page-break.
+   =========================================================== */
+function buildShotSectionXml(groups, ch){
+  const W         = 5233;   // twips per kolom (≈ 261 pt)
+  const MAX_W_PT  = 250;    // lebar maksimum gambar
+  const MAX_H_PT  = 540;    // tinggi maksimum gambar
 
-  const rows = [];
-  for(let i = 0; i < groups.length; i += 2) rows.push(groups.slice(i, i + 2));
+  if(!groups.length){
+    return paraXml('Belum ada grup yang ditambahkan.',
+                   { italic: true, color: '888888', size: 22 });
+  }
 
-  let xml = `<w:tbl>
-    <w:tblPr>
-      <w:tblW w:w="10466" w:type="dxa"/>
-      <w:jc w:val="center"/>
-      <w:tblBorders>
-        <w:top     w:val="single" w:sz="12" w:space="0" w:color="000000"/>
-        <w:left    w:val="single" w:sz="12" w:space="0" w:color="000000"/>
-        <w:bottom  w:val="single" w:sz="12" w:space="0" w:color="000000"/>
-        <w:right   w:val="single" w:sz="12" w:space="0" w:color="000000"/>
-        <w:insideH w:val="single" w:sz="12" w:space="0" w:color="000000"/>
-        <w:insideV w:val="single" w:sz="12" w:space="0" w:color="000000"/>
-      </w:tblBorders>
-      <w:tblCellMar>
-        <w:top    w:w="80"  w:type="dxa"/>
-        <w:left   w:w="100" w:type="dxa"/>
-        <w:bottom w:w="80"  w:type="dxa"/>
-        <w:right  w:w="100" w:type="dxa"/>
-      </w:tblCellMar>
-    </w:tblPr>
-    <w:tblGrid>
-      <w:gridCol w:w="${W}"/><w:gridCol w:w="${W}"/>
-    </w:tblGrid>`;
+  const pairs = [];
+  for(let i = 0; i < groups.length; i += 2) pairs.push(groups.slice(i, i + 2));
 
-  rows.forEach((pair, rIdx) => {
+  let xml = '';
+  pairs.forEach((pair, pIdx) => {
+    /* page break antar pasangan */
+    if(pIdx > 0) xml += pageBreakXml();
+
+    /* === satu tabel untuk satu pasang === */
+    xml += `<w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="10466" w:type="dxa"/>
+        <w:jc w:val="center"/>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblBorders>
+          <w:top     w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+          <w:left    w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+          <w:bottom  w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+          <w:right   w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+          <w:insideH w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+          <w:insideV w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        </w:tblBorders>
+        <w:tblCellMar>
+          <w:top    w:w="60" w:type="dxa"/>
+          <w:left   w:w="80" w:type="dxa"/>
+          <w:bottom w:w="60" w:type="dxa"/>
+          <w:right  w:w="80" w:type="dxa"/>
+        </w:tblCellMar>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="${W}"/><w:gridCol w:w="${W}"/>
+      </w:tblGrid>`;
+
+    /* --- baris 1: nama-nama grup --- */
     xml += '<w:tr>';
     pair.forEach((g, cIdx) => {
-      const num = rIdx * 2 + cIdx + 1;
-      let cell = '';
-      cell += paraXml(`${num}. ${g.name.trim()}`,
-                      { bold: true, size: 21, after: 60 });
-
-      const img = g[ch];
-      if(img && img.data){
-        const fit = fitSize(img.w, img.h, MAX_W_PT, MAX_H_PT);
-        const pic = addImage(img);
-        cell += `<w:p>
-          <w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>
-          ${drawXml(pic.rid, fit.w, fit.h, pic.id)}
-        </w:p>`;
-      }else{
-        cell += paraXml('— belum ada screenshot —',
-                        { align: 'center', italic: true, size: 18, color: '999999', after: 0 });
-      }
-
+      const num = pIdx * 2 + cIdx + 1;
       xml += `<w:tc>
-        <w:tcPr><w:tcW w:w="${W}" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>
-        ${cell}
+        <w:tcPr>
+          <w:tcW w:w="${W}" w:type="dxa"/>
+          <w:vAlign w:val="center"/>
+        </w:tcPr>
+        ${paraXml(`${num}. ${g.name.trim()}`, {
+          bold: true, size: 22, after: 0, align: 'left'
+        })}
       </w:tc>`;
     });
-
     if(pair.length === 1){
       xml += `<w:tc>
         <w:tcPr><w:tcW w:w="${W}" w:type="dxa"/></w:tcPr>
@@ -765,9 +786,42 @@ function buildShotTableXml(groups, ch){
       </w:tc>`;
     }
     xml += '</w:tr>';
+
+    /* --- baris 2: gambar-gambar --- */
+    xml += '<w:tr>';
+    pair.forEach(g => {
+      const img = g[ch];
+      let cell = '';
+      if(img && img.data){
+        const fit = fitSize(img.w, img.h, MAX_W_PT, MAX_H_PT);
+        const pic = addImage(img);
+        cell = `<w:p>
+          <w:pPr><w:jc w:val="center"/><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>
+          ${drawXml(pic.rid, fit.w, fit.h, pic.id)}
+        </w:p>`;
+      }else{
+        cell = paraXml('— belum ada screenshot —',
+          { align: 'center', italic: true, size: 18, color: '999999', after: 0 });
+      }
+      xml += `<w:tc>
+        <w:tcPr>
+          <w:tcW w:w="${W}" w:type="dxa"/>
+          <w:vAlign w:val="top"/>
+        </w:tcPr>
+        ${cell}
+      </w:tc>`;
+    });
+    if(pair.length === 1){
+      xml += `<w:tc>
+        <w:tcPr><w:tcW w:w="${W}" w:type="dxa"/></w:tcPr>
+        <w:p/>
+      </w:tc>`;
+    }
+    xml += '</w:tr>';
+
+    xml += `</w:tbl>`;
   });
 
-  xml += '</w:tbl>';
   return xml;
 }
 
@@ -780,19 +834,16 @@ function buildDocumentXml(){
 
   let body = '';
 
-  /* Judul */
   body += paraXml(st.docTitle, {
     bold: true, underline: true, align: 'center', size: 34, after: 400
   });
 
-  /* 1. Link */
   body += paraXml(
     runXml('1.  Link fliphtml ', { size: 24 }) +
     runXml(st.flipLink, { size: 24, color: '1155CC', underline: true }),
     { after: 160 }
   );
 
-  /* 2. Jumlah penyebaran */
   body += paraXml('2.  Jumlah penyebaran di ' + st.mediaLabel,
                   { bold: true, size: 24, after: 140 });
   body += paraXml('Total', { size: 24, after: 60 });
@@ -803,16 +854,16 @@ function buildDocumentXml(){
   body += paraXml('•  ' + st.mediaLabel + ': ' + (names || '-'),
                   { size: 24, after: 220, align: 'both' });
 
-  /* 3. Screenshot */
   body += paraXml('3.  Screenshot', { bold: true, size: 24, after: 160 });
-  body += paraXml('Grup WA', { bold: true, size: 24, after: 100 });
-  body += buildShotTableXml(groups, 'wa');
-  body += '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>';
+  body += paraXml('Grup WA', { bold: true, size: 24, after: 120 });
+
+  /* tabel screenshot: satu pasang = satu tabel + page break */
+  body += buildShotSectionXml(groups, 'wa');
 
   if(st.videoEnabled){
-    body += paraXml('Video', { bold: true, size: 24, after: 100 });
-    body += buildShotTableXml(groups, 'video');
-    body += '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>';
+    body += pageBreakXml();
+    body += paraXml('Video', { bold: true, size: 24, after: 120 });
+    body += buildShotSectionXml(groups, 'video');
   }
 
   if(st.note.trim()){
@@ -820,9 +871,7 @@ function buildDocumentXml(){
                     { italic: true, size: 21, color: '444444', after: 0 });
   }
 
-  /* ==== SECTPR: A4 + Narrow margin ====
-     A4          : 11906 x 16838 twips
-     Narrow (0,5"): 720 twips semua sisi  */
+  /* A4 + Margin Narrow (720 twips = 0,5 inci = 1,27 cm) */
   const sectPr = `<w:sectPr>
     <w:pgSz w:w="11906" w:h="16838"/>
     <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"
@@ -837,7 +886,6 @@ function buildDocumentXml(){
 </w:document>`;
 }
 
-/* --- relasi dokumen (gambar) --- */
 function buildRelsXml(){
   let s = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`;
@@ -850,7 +898,6 @@ function buildRelsXml(){
   return s;
 }
 
-/* --- konversi data URL → byte --- */
 function dataURLtoBytes(dataURL){
   const base64 = dataURL.split(',')[1] || '';
   const bin = atob(base64);
@@ -859,25 +906,24 @@ function dataURLtoBytes(dataURL){
   return arr;
 }
 
-/* --- ekspor DOCX --- */
+/* =========================================================
+   9. EKSPOR DOCX
+   ========================================================= */
 async function exportDocx(btn){
   const original = btn.textContent;
   btn.disabled = true;
   btn.textContent = '⏳ Menyiapkan…';
 
   try{
-    /* pastikan semua gambar punya dimensi */
     for(const g of state.groups){
       if(g.wa)    g.wa    = await ensureDims(g.wa);
       if(g.video) g.video = await ensureDims(g.video);
     }
 
-    /* reset koleksi gambar */
     images = [];
     docPrId = 1;
 
     const docXml = buildDocumentXml();
-
     const enc = new TextEncoder();
 
     const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -899,10 +945,10 @@ async function exportDocx(btn){
 </Relationships>`;
 
     const files = [
-      { name: '[Content_Types].xml',           data: enc.encode(contentTypes) },
-      { name: '_rels/.rels',                   data: enc.encode(rootRels) },
-      { name: 'word/document.xml',             data: enc.encode(docXml) },
-      { name: 'word/_rels/document.xml.rels',  data: enc.encode(buildRelsXml()) }
+      { name: '[Content_Types].xml',          data: enc.encode(contentTypes) },
+      { name: '_rels/.rels',                  data: enc.encode(rootRels) },
+      { name: 'word/document.xml',            data: enc.encode(docXml) },
+      { name: 'word/_rels/document.xml.rels', data: enc.encode(buildRelsXml()) }
     ];
 
     images.forEach(im => {
@@ -935,7 +981,7 @@ async function exportDocx(btn){
 }
 
 /* =========================================================
-   9. BINDING FORM
+   10. BINDING FORM
    ========================================================= */
 [['#docTitle','docTitle'], ['#flipLink','flipLink'],
  ['#mediaLabel','mediaLabel'], ['#note','note']].forEach(([sel, key]) => {
@@ -983,8 +1029,8 @@ $('#btnSample').addEventListener('click', () => {
   if(!confirm('Muat contoh data (12 grup dari file PENA KITA)? Data saat ini akan diganti.')) return;
   state = {
     docTitle: 'FORMAT KEGIATAN PENYEBARAN E-BOOK PENA KITA',
-    flipLink: 'https://online.fliphtml5.com/yneup/nlic/',
-    mediaLabel: 'WA dan Tele',
+    flipLink: 'https://online.fliphtml5.com/yneup/oleh/',
+    mediaLabel: 'WA',
     videoEnabled: false,
     note: 'Agar tidak ada duplikasi dan hanya menyebar di grup whatsapp',
     groups: SAMPLE_NAMES.map(n => newGroup(n))
@@ -1001,13 +1047,10 @@ $('#btnReset').addEventListener('click', () => {
 });
 
 $('#btnPrint').addEventListener('click', () => window.print());
-
-$('#btnDocx').addEventListener('click', function(){
-  exportDocx(this);
-});
+$('#btnDocx').addEventListener('click', function(){ exportDocx(this); });
 
 /* =========================================================
-   10. SINKRONISASI FORM
+   11. SINKRONISASI FORM
    ========================================================= */
 function syncFormFromState(){
   $('#docTitle').value   = state.docTitle;
@@ -1018,7 +1061,7 @@ function syncFormFromState(){
 }
 
 /* =========================================================
-   11. INIT
+   12. INIT
    ========================================================= */
 (function init(){
   if(!state.groups.length) state.groups.push(newGroup());
