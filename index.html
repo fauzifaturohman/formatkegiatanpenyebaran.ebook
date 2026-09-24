@@ -113,7 +113,7 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
     <span class="logo">📘</span>
     <div>
       <h1>Generator Format Kegiatan Penyebaran E-Book</h1>
-      <p>Hasil: <b>DOCX</b> · A4 · Margin Narrow · <b>4 screenshot / halaman</b></p>
+      <p>Hasil: <b>DOCX</b> · A4 · Margin Narrow · Screenshot <b>8 × 13 cm</b> (rasio asli)</p>
     </div>
   </div>
   <div class="actions">
@@ -179,11 +179,11 @@ main{display:grid;grid-template-columns:430px 1fr;align-items:start}
         <li>Isi judul, link fliphtml, dan label media.</li>
         <li>Tambahkan nama grup (bisa borongan lewat impor cepat).</li>
         <li>Klik kotak <b>+ WA</b> / <b>+ Vid</b> untuk unggah screenshot.</li>
-        <li>Klik <b>Unduh .docx</b> → otomatis <b>4 screenshot per halaman</b>.</li>
+        <li>Klik <b>Unduh .docx</b> → screenshot otomatis <b>8 × 13 cm</b>,
+            rasio asli tetap.</li>
       </ol>
       <p style="font-size:12px;color:#64748b;margin:10px 0 0;line-height:1.6">
-        <b>Layout:</b> setiap halaman berisi 2 baris tabel × 2 kolom
-        (total 4 pasang nama + screenshot).
+        <b>Layout:</b> 2 kolom × 2 baris per halaman (4 screenshot).
       </p>
     </section>
 
@@ -218,7 +218,7 @@ function imgSrc(v){
 /* =========================================================
    2. STATE
    ========================================================= */
-const STORAGE_KEY = 'ebook-sebaran-draft-v4';
+const STORAGE_KEY = 'ebook-sebaran-draft-v5';
 const PER_PAGE_PAIRS = 2;   /* 2 pasang = 4 screenshot per halaman */
 
 const SAMPLE_NAMES = [
@@ -259,7 +259,7 @@ let state = loadState() || defaultState();
 /* =========================================================
    3. GAMBAR → DATA URL
    ========================================================= */
-function fileToDataURL(file, maxW = 900, quality = 0.82){
+function fileToDataURL(file, maxW = 1100, quality = 0.85){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
@@ -459,7 +459,10 @@ function buildPreviewHtml(){
   return h;
 }
 
-/* Preview: 2 pasang per "halaman" (4 screenshot) */
+/* Preview: gambar dibatasi tinggi 13cm (= 491px @96dpi) & lebar 8cm (=302px) */
+const PREVIEW_MAX_W_PX = 302;   /* 8 cm @96dpi */
+const PREVIEW_MAX_H_PX = 491;   /* 13 cm @96dpi */
+
 function previewShotSection(groups, ch){
   if(!groups.length){
     return `<div style="font-size:11pt;color:#888;font-style:italic">
@@ -471,7 +474,6 @@ function previewShotSection(groups, ch){
 
   let out = '';
   pairs.forEach((pair, pIdx) => {
-    /* page separator setiap 2 pasang */
     if(pIdx > 0 && pIdx % PER_PAGE_PAIRS === 0){
       out += `<div class="page-sep">halaman baru · 4 screenshot</div>`;
     }
@@ -481,7 +483,6 @@ function previewShotSection(groups, ch){
       <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
       <tbody>`;
 
-    /* Baris nama */
     out += `<tr>`;
     pair.forEach((g, cIdx) => {
       const num = pIdx * 2 + cIdx + 1;
@@ -495,21 +496,25 @@ function previewShotSection(groups, ch){
     }
     out += `</tr>`;
 
-    /* Baris gambar */
     out += `<tr>`;
     pair.forEach(g => {
       const src = imgSrc(g[ch]);
       let cell;
       if(src){
+        /* kotak 8×13 cm, rasio dipertahankan */
         cell = `<img src="${src}" alt=""
-          style="width:auto;max-width:100%;max-height:220px;height:auto;
-                 display:block;border:1px solid #888;margin:0 auto">`;
+          style="display:block;margin:0 auto;border:1px solid #888;
+                 max-width:${PREVIEW_MAX_W_PX}px;
+                 max-height:${PREVIEW_MAX_H_PX}px;
+                 width:auto;height:auto">`;
       }else{
-        cell = `<div style="border:1px dashed #b0b0b0;height:140px;
+        cell = `<div style="border:1px dashed #b0b0b0;
+                width:${PREVIEW_MAX_W_PX}px;height:${PREVIEW_MAX_H_PX}px;
                 text-align:center;color:#9a9a9a;font-size:9pt;
-                padding-top:60px;background:#fafafa">Belum ada screenshot</div>`;
+                padding-top:230px;background:#fafafa;margin:0 auto;
+                box-sizing:border-box">Belum ada screenshot</div>`;
       }
-      out += `<td style="border:1.5px solid #000;vertical-align:middle;
+      out += `<td style="border:1.5px solid #000;vertical-align:top;
                   padding:5px;background:#fff;text-align:center">${cell}</td>`;
     });
     if(pair.length === 1){
@@ -705,28 +710,24 @@ function drawXml(rid, wPt, hPt, id){
   </w:drawing></w:r>`;
 }
 
+/* ===========================================================
+   KOTAK UKURAN SCREENSHOT — 8 cm × 13 cm
+   1 cm = 28,3465 pt  →  8 cm = 226,77 pt ; 13 cm = 368,50 pt
+   Rasio asli gambar tetap dipertahankan: gambar "di-fit" ke
+   dalam kotak 226,77 × 368,50 pt memakai skala minimum
+   sehingga tidak pernah melebihi kotak, tetapi tetap proporsional.
+   =========================================================== */
+const BOX_W_PT = 226.77;   /* lebar kotak  8 cm */
+const BOX_H_PT = 368.50;   /* tinggi kotak 13 cm */
+
 function fitSize(w, h, maxW, maxH){
   if(!w || !h) return { w: maxW, h: maxW * 0.75 };
-  const r = Math.min(maxW / w, maxH / h);
+  const r = Math.min(maxW / w, maxH / h);   /* skala minimum → rasio asli terjaga */
   return { w: w * r, h: h * r };
 }
 
-/* ===========================================================
-   TABEL SCREENSHOT — 4 per halaman
-     - Ukuran gambar dibatasi agar 2 pasang (2 baris) muat 1 halaman.
-     - Page break ditambahkan setiap 2 pasang (PER_PAGE_PAIRS).
-   Batas aman (A4 + narrow margin):
-     - tinggi usable  ≈ 770 pt (842 - 72)
-     - sisa judul + heading di halaman 1 ≈ 200 pt
-     - 2 baris tabel + border/padding ≈ 80 pt
-     → sisa untuk 2 gambar ≈ 490 pt → per gambar ≈ 245 pt.
-   Kita pakai 230 pt untuk aman, lebar maks 250 pt.
-   =========================================================== */
-const MAX_W_PT = 250;   /* lebar maksimum gambar (pt) */
-const MAX_H_PT = 230;   /* tinggi maksimum gambar (pt) */
-
 function buildShotSectionXml(groups, ch){
-  const W = 5233;   /* lebar kolom (twips) */
+  const W = 5233;   /* lebar kolom (twips) ≈ 261,65 pt */
 
   if(!groups.length){
     return paraXml('Belum ada grup yang ditambahkan.',
@@ -738,7 +739,6 @@ function buildShotSectionXml(groups, ch){
 
   let xml = '';
   pairs.forEach((pair, pIdx) => {
-    /* page break setiap 2 pasang (4 screenshot) */
     if(pIdx > 0 && pIdx % PER_PAGE_PAIRS === 0){
       xml += pageBreakXml();
     }
@@ -795,7 +795,8 @@ function buildShotSectionXml(groups, ch){
       const img = g[ch];
       let cell = '';
       if(img && img.data){
-        const fit = fitSize(img.w, img.h, MAX_W_PT, MAX_H_PT);
+        /* kotak 8×13 cm, rasio asli tetap */
+        const fit = fitSize(img.w, img.h, BOX_W_PT, BOX_H_PT);
         const pic = addImage(img);
         cell = `<w:p>
           <w:pPr><w:jc w:val="center"/><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>
